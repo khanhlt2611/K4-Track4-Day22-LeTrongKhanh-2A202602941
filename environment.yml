@@ -6,12 +6,20 @@ dependencies:
   - pip
   - pip:
       - ultralytics>=8.4
-      - boxmot==10.0.42
-      - opencv-python>=4.8
-      - numpy
+      - boxmot==10.0.84
+      - opencv-python==4.11.0.86
+      - numpy==1.26.4
       - pyyaml
       - lap>=0.4.0
       - scipy
       - filterpy
       - matplotlib
       - pytest
+      - torch==2.2.2
+      - torchvision==0.17.2
+      - setuptools<81
+      - pycocotools
+      - tabulate
+      - nbclient
+      - nbformat
+      - ipykernel

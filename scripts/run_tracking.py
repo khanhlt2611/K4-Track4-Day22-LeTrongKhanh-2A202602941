@@ -20,6 +20,7 @@ https://google.github.io/styleguide/pyguide.html
 from __future__ import annotations
 
 import argparse
+import json
 import time
 from pathlib import Path
 from typing import Iterator, Tuple
@@ -28,7 +29,6 @@ import cv2
 import numpy as np
 from ultralytics import YOLO
 
-from boxmot.tracker_zoo import create_tracker, get_tracker_config
 
 # ---------------------------------------------------------------------------
 # Các biến CỐ ĐỊNH cho cả lớp — KHÔNG sửa khi làm bài chính. Nếu muốn thử
@@ -60,7 +60,10 @@ def iter_frames(source: Path) -> Iterator[Tuple[int, np.ndarray]]:
         if not frame_paths:
             raise FileNotFoundError(f"Không tìm thấy ảnh .jpg trong {source}")
         for i, path in enumerate(frame_paths):
-            yield i, cv2.imread(str(path))
+            frame = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if frame is None:
+                raise ValueError(f"Không đọc được ảnh {path}")
+            yield i, frame
     else:
         cap = cv2.VideoCapture(str(source))
         if not cap.isOpened():
@@ -125,6 +128,8 @@ def run(args: argparse.Namespace) -> None:
             ``conf``, ``iou``, ``device``, ``out``, ``save_video``, ``fps``
             và ``max_frames``.
     """
+    from boxmot.tracker_zoo import create_tracker, get_tracker_config
+
     source = Path(args.source)
     out_dir = Path(args.out)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -134,6 +139,7 @@ def run(args: argparse.Namespace) -> None:
     if args.tracker in USES_APPEARANCE:
         print(f"              tracker này dùng Re-ID: {REID_WEIGHTS.name} (tự tải nếu chưa có)")
     detector = YOLO(DETECTOR_WEIGHTS)
+    detector.to(args.device)
     tracker = create_tracker(
         tracker_type=args.tracker,
         tracker_config=get_tracker_config(args.tracker),
@@ -152,6 +158,8 @@ def run(args: argparse.Namespace) -> None:
         if frame is None:
             continue
         n_frames += 1
+        if n_frames % 100 == 0:
+            print(f"[{args.seq_name}] đã xử lý {n_frames} frame", flush=True)
 
         dets = detect(detector, frame, conf=args.conf, iou=args.iou)
         tracks = tracker.update(dets, frame)
@@ -191,6 +199,14 @@ def run(args: argparse.Namespace) -> None:
 
     dt = time.time() - t0
     fps = n_frames / dt if dt > 0 else 0.0
+    (out_dir / f"{args.seq_name}_run.json").write_text(
+        json.dumps({"video": args.seq_name, "tracker": args.tracker,
+                    "conf": args.conf, "iou": args.iou, "frames": n_frames,
+                    "max_frames": args.max_frames, "seconds": dt, "fps": fps,
+                    "detector": DETECTOR_WEIGHTS, "imgsz": IMG_SIZE,
+                    "device": args.device}, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
     print(
         f"\n[{args.seq_name}] tracker={args.tracker} conf={args.conf} iou={args.iou} "
         f"-> {n_frames} frame trong {dt:.1f}s ({fps:.1f} FPS)"

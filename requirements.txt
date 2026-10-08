@@ -2,8 +2,8 @@
 # TrackEval cài riêng bằng git clone (xem HUONG_DAN.md, bước C).
 
 ultralytics>=8.4
-boxmot==10.0.42
-opencv-python>=4.8
+boxmot==10.0.84
+opencv-python==4.11.0.86
 numpy
 pyyaml
 lap>=0.4.0
@@ -11,3 +11,14 @@ scipy
 filterpy
 matplotlib
 pytest
+
+# Bản CUDA 11.8 cài riêng nếu máy có GPU phù hợp.
+torch==2.2.2
+torchvision==0.17.2
+numpy==1.26.4
+setuptools<81
+pycocotools
+tabulate
+nbclient
+nbformat
+ipykernel
